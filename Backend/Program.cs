@@ -99,6 +99,7 @@ namespace Foodbook
 
             builder.Services.AddScoped<ITokenService, TokenService>();
             builder.Services.AddScoped<IRecipeRepository, RecipeRepository>();
+            builder.Services.AddScoped<ICommentRepository, CommentRepository>();
             builder.Services.AddAuthorization();
             var app = builder.Build();
 

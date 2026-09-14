@@ -42,7 +42,7 @@ namespace Foodbook.Repository
 
         public async Task<List<Recipe>> GetAllAsync(QueryObject query)
         {
-            var recipes = _context.Recipes.AsQueryable();
+            var recipes = _context.Recipes.Include(c => c.Comments).AsQueryable();
 
             if (query.UserId != null)
             {
@@ -54,7 +54,7 @@ namespace Foodbook.Repository
 
         public async Task<Recipe?> GetByIdAsync(int id)
         {
-            var recipe = await _context.Recipes.FirstOrDefaultAsync(r => r.Id == id);
+            var recipe = await _context.Recipes.Include(c => c.Comments).FirstOrDefaultAsync(r => r.Id == id);
             return recipe;
         }
 
