@@ -26,14 +26,15 @@ namespace Foodbook.Repository
 
         public async Task<Comment?> DeleteAsync(int id)
         {
-            var comment = await _context.Comments.FirstOrDefaultAsync(x => x.Id == id);
+            var comment = await _context.Comments.FindAsync(id);
 
-            if(comment == null)
+            if (comment == null)
             {
                 return null;
             }
 
             _context.Comments.Remove(comment);
+
             await _context.SaveChangesAsync();
 
             return comment;
@@ -41,13 +42,13 @@ namespace Foodbook.Repository
 
         public async Task<List<Comment>> GetAllAsync()
         {
-            var comments = await _context.Comments.ToListAsync();
+            var comments = await _context.Comments.AsNoTracking().Include(c => c.User).ToListAsync();
             return comments;
         }
 
         public async Task<Comment?> GetByIdAsync(int id)
         {
-            var comment = await _context.Comments.FirstOrDefaultAsync(x => x.Id == id);
+            var comment = await _context.Comments.Include(c => c.User).FirstOrDefaultAsync(x => x.Id == id);
             if (comment == null)
             {
                 return null;
@@ -56,23 +57,23 @@ namespace Foodbook.Repository
 
         }
 
-        public Task<bool> RecipeExists(int id)
+        public async Task<bool> ExistsAsync(int id)
         {
-            throw new NotImplementedException();
+            return await _context.Comments.AnyAsync(r => r.Id == id);
         }
 
-        public async Task<Comment?> UpdateAsync(int id, UpdateCommentDTO commentDTO)
+        public async Task<Comment?> UpdateAsync(Comment comment)
         {
-            var comment = await _context.Comments.FirstOrDefaultAsync(x => x.Id == id);
-            if (comment == null)
+            var _comment = await _context.Comments.FindAsync(comment.Id);
+            if (_comment == null)
             {
                 return null;
             }
 
-            comment.Text = commentDTO.Text;
+            _comment.Text = comment.Text;
             await _context.SaveChangesAsync();
 
-            return comment;
+            return _comment;
         }
     }
 }

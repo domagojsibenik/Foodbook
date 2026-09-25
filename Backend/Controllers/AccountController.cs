@@ -45,10 +45,10 @@ namespace Foodbook.Controllers
                     if (roleResult.Succeeded)
                     {
                         return Ok(
-                                new NewUserDTO
+                                new AuthResponseDTO
                                 {
-                                    UserName = appUser.UserName,
-                                    Email = appUser.Email,
+                                    UserName = appUser.UserName!,
+                                    Email = appUser.Email!,
                                     Token = _tokenService.CreateToken(appUser)
                                 }
                             );
@@ -93,10 +93,10 @@ namespace Foodbook.Controllers
             }
 
             return Ok(
-                new NewUserDTO
+                new AuthResponseDTO
                 {
-                    UserName = user.UserName,
-                    Email = user.Email,
+                    UserName = user.UserName!,
+                    Email = user.Email!,
                     Token = _tokenService.CreateToken(user)
                 }
             );

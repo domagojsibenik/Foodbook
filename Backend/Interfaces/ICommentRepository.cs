@@ -9,8 +9,8 @@ namespace Foodbook.Interfaces
         Task<List<Comment>> GetAllAsync();
         Task<Comment?> GetByIdAsync(int id);
         Task<Comment> CreateAsync(Comment comment);
-        Task<Comment?> UpdateAsync(int id, UpdateCommentDTO commentDTO);
-        Task<Comment?> DeleteAsync(int id);
-        Task<bool> RecipeExists(int id);
+        Task<Comment?> UpdateAsync(Comment comment);
+        Task<Comment?> DeleteAsync(int commentid);
+        Task<bool> ExistsAsync(int id);
     }
 }

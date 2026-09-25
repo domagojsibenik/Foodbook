@@ -1,8 +1,10 @@
 ﻿using Foodbook.DTO;
+using Foodbook.Helpers;
 using Foodbook.Interfaces;
 using Foodbook.Models;
 using Foodbook.Repository;
 using Foodbook.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -14,24 +16,25 @@ namespace Foodbook.Controllers
     
     public class LikeController : Controller
     {
-        private readonly AppDbContext _context;
+    
         private readonly UserManager<AppUser> _userManager;
         private readonly ILikeRepository _repository;
+        private readonly IRecipeRepository _recipeRepository;
 
-        public LikeController(AppDbContext context, UserManager<AppUser> userManager, ILikeRepository repository)
+        public LikeController(UserManager<AppUser> userManager, ILikeRepository repository, IRecipeRepository recipeRepository)
         {
-            _context = context;
             _userManager = userManager;
             _repository = repository;
+            _recipeRepository = recipeRepository;
         }
 
 
         [HttpGet()]
         public async Task<IActionResult> Get()
         {
-            var recipes = await _repository.getAllAsync();
+            var likes = await _repository.GetAllAsync();
 
-            return Ok(recipes);
+            return Ok(likes.Select(l => l.ToResponseDTO()));
         }
 
         
@@ -39,36 +42,52 @@ namespace Foodbook.Controllers
         [HttpGet("{id:int}")]
         public async Task<IActionResult> GetOne(int id)
         {
-            var recipe = await _repository.getOneAsync(id);
+            var like = await _repository.GetByIdAsync(id);
 
-            if(recipe == null)
+            if(like == null)
             {
                 return NotFound();
             }
 
-            return Ok(recipe);
+            return Ok(like.ToResponseDTO());
         }
-
+        [Authorize]
         [HttpPost()]
-        public async Task<IActionResult> Create([FromBody] LikeDTO like)
+        public async Task<IActionResult> Create([FromBody] CreateLikeDTO likeDto)
         {
             var user = await _userManager.GetUserAsync(User);
 
             if (user == null)
                 return Unauthorized();
 
-            bool likeCheck = await _repository.doesExist(like.RecipeId, user.Id);
+            if (!await _recipeRepository.ExistsAsync(likeDto.RecipeId))
+            {
+                return NotFound("Recipe not found");
+            }
+
+            var recipe = await _recipeRepository.GetByIdAsync(likeDto.RecipeId);
+
+            bool likeCheck = await _repository.ExistsAsync(likeDto.RecipeId, user.Id);
 
             if (likeCheck)
             {
-                return BadRequest("Already exists");
+                return Conflict("You already liked this recipe.");
             }
+            var like = new Like
+            {
+                RecipeId = likeDto.RecipeId,
+                UserId = user.Id,
+                User = user,
 
-            var likeModel = await _repository.createAsync(like, user.Id);
+                CreatedAt = DateTime.UtcNow
+            };
+
+            var likeModel = await _repository.CreateAsync(like);
             
-            return Ok(likeModel);
+            return Ok(likeModel.ToResponseDTO());
         }
 
+        [Authorize]
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete(int id)
         {
@@ -77,7 +96,7 @@ namespace Foodbook.Controllers
             if (user == null)
                 return Unauthorized();
 
-            var like = await _repository.getOneAsync(id);
+            var like = await _repository.GetByIdAsync(id);
 
             if (like == null)
                 return NotFound();
@@ -85,7 +104,7 @@ namespace Foodbook.Controllers
             if (user.Id != like.UserId)
                 return Forbid();
 
-            var removedLike = await _repository.deleteAsync(like.Id);
+            var removedLike = await _repository.DeleteAsync(like.Id);
 
             return NoContent();
         }

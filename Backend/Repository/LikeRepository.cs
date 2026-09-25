@@ -1,4 +1,5 @@
 ﻿using Foodbook.DTO;
+using Foodbook.Helpers;
 using Foodbook.Interfaces;
 using Foodbook.Models;
 using Foodbook.Services;
@@ -14,22 +15,15 @@ namespace Foodbook.Repository
             _context = context;
         }
 
-        public async Task<Like> createAsync(LikeDTO like, string userId)
+        public async Task<Like> CreateAsync(Like like)
         {
-            var likeModel = new Like()
-            {
-                UserId = userId,
-                RecipeId = like.RecipeId,
-                CreatedAt = like.CreatedAt
-            };
-
-            await _context.Likes.AddAsync(likeModel);
+            await _context.Likes.AddAsync(like);
             await _context.SaveChangesAsync();
 
-            return likeModel;
+            return like;
         }
 
-        public async Task<Like?> deleteAsync(int id)
+        public async Task<Like?> DeleteAsync(int id)
         {
             var like = await _context.Likes.FirstOrDefaultAsync(x => x.Id == id);
 
@@ -45,19 +39,19 @@ namespace Foodbook.Repository
 
         }
 
-        public async Task<List<Like>> getAllAsync()
+        public async Task<List<Like>> GetAllAsync()
         {
-            var recipes = await _context.Likes.ToListAsync();
+            var recipes = await _context.Likes.AsNoTracking().Include(c => c.User).ToListAsync();
             return recipes;
         }
 
-        public async Task<Like?> getOneAsync(int id)
+        public async Task<Like?> GetByIdAsync(int id)
         {
-            var recipe = await _context.Likes.FirstOrDefaultAsync(x => x.Id == id);
+            var recipe = await _context.Likes.AsNoTracking().Include(c => c.User).FirstOrDefaultAsync(x => x.Id == id);
             return recipe;
         }
 
-        public async Task<bool> doesExist(int recipeId, string userId)
+        public async Task<bool>  ExistsAsync(int recipeId, string userId)
         {
             var likeCheck = await _context.Likes.AnyAsync(x => x.UserId == userId && x.RecipeId == recipeId);
 

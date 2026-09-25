@@ -11,13 +11,13 @@ using Microsoft.EntityFrameworkCore;
 namespace Foodbook.Controllers
 {
     [ApiController]
-    [Route("[controller]")]
+    [Route("api/recipe")]
     public class RecipeController : ControllerBase
     {
         private readonly UserManager<AppUser> _userManager;
         private readonly IRecipeRepository _repository;
 
-        public RecipeController(AppDbContext context, UserManager<AppUser> userManager, IRecipeRepository repository)
+        public RecipeController(UserManager<AppUser> userManager, IRecipeRepository repository)
         {
             _userManager = userManager;
             _repository = repository;
@@ -28,7 +28,7 @@ namespace Foodbook.Controllers
         {
             var recipes = await _repository.GetAllAsync(query);
 
-            return Ok(recipes);
+            return Ok(recipes.Select(r => r.ToResponseDTO()));
            
         }
 
@@ -37,19 +37,17 @@ namespace Foodbook.Controllers
         {
             var recipe = await _repository.GetByIdAsync(id);
 
-            RecipeDTO recipeDTO = new RecipeDTO()
+            if (recipe == null)
             {
-                Name = recipe.Name,
-                Description = recipe.Description,
-                CookingTimeInMinutes = recipe.CookingTimeInMinutes,
-            };
-            return Ok(recipe);
+                return NotFound();
+            }
+            return Ok(recipe.ToResponseDTO());
 
         }
 
         [Authorize]
         [HttpPost]
-        public async Task<IActionResult> Create([FromBody] RecipeDTO recipeDTO)
+        public async Task<IActionResult> Create([FromBody] CreateRecipeDTO recipeDTO)
         {
             var user = await _userManager.GetUserAsync(User);
 
@@ -61,35 +59,85 @@ namespace Foodbook.Controllers
                 Name = recipeDTO.Name,
                 Description = recipeDTO.Description,
                 CookingTimeInMinutes = recipeDTO.CookingTimeInMinutes,
-                UserId = user.Id
+                ImageUrl = recipeDTO.ImageUrl,
+                UserId = user.Id,
+                User = user
             };
             await _repository.CreateAsync(recipe);
 
-            return Ok();
+            var response = new RecipeResponseDTO
+            {
+                Id = recipe.Id,
+                Name = recipe.Name,
+                Description = recipe.Description,
+                CookingTimeInMinutes =
+                    recipe.CookingTimeInMinutes,
+
+                ImageUrl = recipe.ImageUrl,
+
+                User = user.ToSummaryDTO()
+            };
+
+            return CreatedAtAction(nameof(GetOne),new { id = recipe.Id },response);
         }
 
+        [Authorize]
         [HttpPut("{id:int}")]
-        public async Task< IActionResult> Update(int id, RecipeDTO recipeDTO)
+        public async Task< IActionResult> Update(int id, [FromBody] UpdateRecipeDTO recipeDTO)
         {
-            var recipe = await _repository.UpdateAsync(id, recipeDTO);
+            var user = await _userManager.GetUserAsync(User);
+
+            if (user == null)
+            {
+                return Unauthorized();
+            }
+
+            var recipe = await _repository.GetByIdAsync(id);
 
             if(recipe == null)
             {
                 return NotFound();
             }
+            if (recipe.UserId != user.Id)
+            {
+                return Forbid();
+            }
 
-            return Ok();
+            recipe.Name = recipeDTO.Name;
+            recipe.Description = recipeDTO.Description;
+            recipe.CookingTimeInMinutes = recipeDTO.CookingTimeInMinutes;
+            recipe.ImageUrl = recipeDTO.ImageUrl;
+
+            await _repository.UpdateAsync(recipe);
+
+            return NoContent();
+
         }
 
+        [Authorize]
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete(int id)
         {
-            var recipe = await _repository.DeleteAsync(id);
+            var user = await _userManager.GetUserAsync(User);
+
+            if (user == null)
+            {
+                return Unauthorized();
+            }
+
+            var recipe = await _repository.GetByIdAsync(id);
 
             if(recipe == null)
             {
                 return NotFound();
             }
+
+            if (recipe.UserId != user.Id)
+            {
+                return Forbid();
+            }
+
+            await _repository.DeleteAsync(recipe.Id);
 
             return NoContent();
         }

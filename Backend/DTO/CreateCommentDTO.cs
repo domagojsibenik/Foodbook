@@ -1,11 +1,13 @@
-﻿using Foodbook.Models;
+﻿using System.ComponentModel.DataAnnotations;
 
 namespace Foodbook.DTO
 {
     public class CreateCommentDTO
     {
-        public string Text { get; set; }
-        public DateTime CreatedAt { get; set; } = DateTime.Now;
-        public int? RecipeId { get; set; }
+        [Required]
+        [MaxLength(1000)]
+        public string Text { get; set; } = string.Empty;
+
+        public int RecipeId { get; set; }
     }
 }

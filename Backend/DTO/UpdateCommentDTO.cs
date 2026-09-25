@@ -1,7 +1,11 @@
-﻿namespace Foodbook.DTO
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace Foodbook.DTO
 {
     public class UpdateCommentDTO
     {
-        public string Text { get; set; }
+        [Required]
+        [MaxLength(1000)]
+        public string Text { get; set; } = string.Empty;
     }
 }

@@ -25,28 +25,37 @@ namespace Foodbook.Repository
             return recipe;
         }
 
-        public async Task<Recipe?> DeleteAsync(int id)
+        public async Task<Recipe?> DeleteAsync(int recipeid)
         {
-            var recipe = await _context.Recipes.FirstOrDefaultAsync(x => x.Id == id);
+            var findrecipe = await _context.Recipes.FindAsync(recipeid);
 
-            if (recipe == null)
+            if (findrecipe == null)
             {
                 return null;
             }
 
-            _context.Recipes.Remove(recipe);
+            _context.Recipes.Remove(findrecipe);
             await _context.SaveChangesAsync();
 
-            return recipe;
+            return findrecipe;
         }
 
         public async Task<List<Recipe>> GetAllAsync(QueryObject query)
         {
-            var recipes = _context.Recipes.Include(c => c.Comments).AsQueryable();
+            var recipes = _context.Recipes
+               .AsNoTracking()
+               .Include(r => r.User)
+               .Include(r => r.Comments)
+                   .ThenInclude(c => c.User)
+               .Include(r => r.Likes)
+                   .ThenInclude(l => l.User)
+               .AsSplitQuery();
+              
 
-            if (query.UserId != null)
+            if (!string.IsNullOrWhiteSpace(query.UserId))
             {
-                recipes = recipes.Where(s => s.UserId == query.UserId);
+                recipes = recipes.Where(
+                    r => r.UserId == query.UserId);
             }
 
             return await recipes.ToListAsync();
@@ -54,24 +63,39 @@ namespace Foodbook.Repository
 
         public async Task<Recipe?> GetByIdAsync(int id)
         {
-            var recipe = await _context.Recipes.Include(c => c.Comments).FirstOrDefaultAsync(r => r.Id == id);
-            return recipe;
+            return await _context.Recipes
+            .AsNoTracking()
+            .Include(r => r.User)
+            .Include(r => r.Comments)
+                .ThenInclude(c => c.User)
+            .Include(r => r.Likes)
+                .ThenInclude(l => l.User)
+            .AsSplitQuery()
+            .FirstOrDefaultAsync(r => r.Id == id);
         }
 
-        public Task<bool> RecipeExists(int id)
+        public async Task<bool> ExistsAsync(int id)
         {
-            throw new NotImplementedException();
+            return await _context.Recipes.AnyAsync(r => r.Id == id);
         }
 
-        public async Task<Recipe?> UpdateAsync(int id, RecipeDTO recipeDTO)
+        public async Task<Recipe?> UpdateAsync(Recipe recipe)
         {
-            var recipe = await _context.Recipes.FirstOrDefaultAsync(x => x.Id == id);
-            recipe.Name = recipeDTO.Name;
-            recipe.Description = recipeDTO.Description;
-            recipe.CookingTimeInMinutes = recipeDTO.CookingTimeInMinutes;
+
+            var updatedRecipe = await _context.Recipes.FirstOrDefaultAsync(r => r.Id == recipe.Id);
+
+            if (updatedRecipe == null)
+            {
+                return null;
+            }
+
+            updatedRecipe.Name = recipe.Name;
+            updatedRecipe.Description = recipe.Description;
+            updatedRecipe.CookingTimeInMinutes = recipe.CookingTimeInMinutes;
+            updatedRecipe.ImageUrl = recipe.ImageUrl;
             await _context.SaveChangesAsync();
 
-            return recipe;
+            return updatedRecipe;
         }
     }
 }

@@ -1,4 +1,5 @@
 ﻿using Foodbook.DTO;
+using Foodbook.Helpers;
 using Foodbook.Interfaces;
 using Foodbook.Models;
 using Foodbook.Services;
@@ -13,15 +14,18 @@ namespace Foodbook.Controllers
     [ApiController]
     public class CommentController : Controller
     {
-        private readonly AppDbContext _context;
+
         private readonly UserManager<AppUser> _userManager;
         private readonly ICommentRepository _repository;
-        
-        public CommentController(AppDbContext context, UserManager<AppUser> userManager, ICommentRepository repository)
+        private readonly IRecipeRepository _recipeRepository;
+
+
+        public CommentController(UserManager<AppUser> userManager, ICommentRepository repository, IRecipeRepository recipeRepository)
         {
-            _context = context;
+           
             _userManager = userManager;
             _repository = repository;
+            _recipeRepository = recipeRepository;
         }
 
         [HttpGet("{id:int}")]
@@ -33,14 +37,14 @@ namespace Foodbook.Controllers
                 return NotFound();
             }
 
-            return Ok(comment);
+            return Ok(comment.ToResponseDTO());
         }
 
         [HttpGet()]
         public async Task<IActionResult> GetAll()
         {
             var comments = await _repository.GetAllAsync();
-            return Ok(comments);
+            return Ok(comments.Select(c => c.ToResponseDTO()));
         }
 
         [Authorize]
@@ -54,44 +58,78 @@ namespace Foodbook.Controllers
                 return Unauthorized();
             }
 
+            if (!await _recipeRepository.ExistsAsync(commentDTO.RecipeId))
+            {
+                return NotFound("Recipe does not exist.");
+            }
+
             var comment = new Comment()
             {
                 Text = commentDTO.Text,
                 RecipeId = commentDTO.RecipeId,
-                CreatedAt = commentDTO.CreatedAt,
-                UserId = user.Id
+                CreatedAt = DateTime.UtcNow,
+                UserId = user.Id,
+                User = user,
             };
 
             await _repository.CreateAsync(comment);
-            return Ok(commentDTO);            
+            return Ok(comment.ToResponseDTO());            
         }
 
+        [Authorize]
         [HttpPut("{id:int}")]
         public async Task<IActionResult> Update([FromBody] UpdateCommentDTO commentDTO, int id)
         {
-            var comment = await _repository.UpdateAsync(id, commentDTO);
+            var user =await _userManager.GetUserAsync(User);
+
+            if (user == null)
+            {
+                return Unauthorized();
+            }
+            var comment = await _repository.GetByIdAsync(id);
 
             if (comment == null)
             {
                 return NotFound();
             }
 
-            return Ok();
+            if (comment.UserId != user.Id)
+            {
+                return Forbid();
+            }
+
+            comment.Text = commentDTO.Text;
+
+            await _repository.UpdateAsync(comment);
+
+            return NoContent();
         }
 
+        [Authorize]
         [HttpDelete("{id:int}")]
         public async Task<IActionResult> Delete(int id)
         {
-            var comment = await _repository.DeleteAsync(id);
+            var user = await _userManager.GetUserAsync(User);
 
-            if(comment == null)
+            if (user == null)
+            {
+                return Unauthorized();
+            }
+
+            var comment = await _repository.GetByIdAsync(id);
+
+            if (comment == null)
             {
                 return NotFound();
             }
+            if (comment.UserId != user.Id)
+            {
+                return Forbid();
+            }
 
-            
+            await _repository.DeleteAsync(comment.Id);
 
-            return Ok();
+            return NoContent();
         }
 
     }

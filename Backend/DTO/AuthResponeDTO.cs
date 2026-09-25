@@ -1,6 +1,6 @@
 ﻿namespace Foodbook.DTO
 {
-    public class NewUserDTO
+    public class AuthResponseDTO
     {
         public string UserName { get; set; }
         public string Email { get; set; }
