@@ -102,6 +102,18 @@ namespace Foodbook
             builder.Services.AddScoped<ICommentRepository, CommentRepository>();
             builder.Services.AddScoped<ILikeRepository, LikeRepository>();
             builder.Services.AddAuthorization();
+
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("Frontend", policy =>
+                {
+                    policy
+                        .WithOrigins("http://localhost:5173")
+                        .AllowAnyHeader()
+                        .AllowAnyMethod();
+                });
+            });
+
             var app = builder.Build();
 
             // Configure the HTTP request pipeline.
@@ -112,6 +124,8 @@ namespace Foodbook
             }
 
             app.UseHttpsRedirection();
+
+            app.UseCors("Frontend");
 
             app.UseAuthentication();
             app.UseAuthorization();
