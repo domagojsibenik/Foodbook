@@ -114,6 +114,19 @@ namespace Foodbook
                 });
             });
 
+            builder.Services.AddHttpClient("OpenAI", client =>
+            {
+                client.BaseAddress = new Uri("https://api.openai.com/v1/");
+            });
+
+            builder.Services.AddHttpClient("Foodbook", client =>
+            {
+                client.BaseAddress = new Uri(
+                    builder.Configuration["Foodbook:BaseUrl"]
+                    ?? throw new InvalidOperationException("Nedostaje Foodbook:BaseUrl.")
+                );
+            });
+
             var app = builder.Build();
 
             // Configure the HTTP request pipeline.
