@@ -147,14 +147,14 @@ namespace Foodbook.Controllers
         [HttpGet("~/api/me/recipes")]
         public async Task<IActionResult> GetMyRecipes([FromQuery] QueryObject query)
         {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            var user = await _userManager.GetUserAsync(User);
 
-            if (string.IsNullOrWhiteSpace(userId))
+            if (string.IsNullOrWhiteSpace(user.Id))
             {
                 return Unauthorized();
             }
 
-            query.UserId = userId;
+            query.UserId = user.Id;
             query.Liked = false;
 
             var recipes = await _repository.GetAllAsync(query);
