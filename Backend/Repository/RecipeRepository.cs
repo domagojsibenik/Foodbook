@@ -43,20 +43,43 @@ namespace Foodbook.Repository
         public async Task<List<Recipe>> GetAllAsync(QueryObject query)
         {
             var recipes = _context.Recipes
-               .AsNoTracking()
-               .Include(r => r.User)
-               .Include(r => r.Comments)
-                   .ThenInclude(c => c.User)
-               .Include(r => r.Likes)
-                   .ThenInclude(l => l.User)
-               .AsSplitQuery();
-              
+                .AsNoTracking()
+                .Include(r => r.User)
+                .Include(r => r.Comments)
+                    .ThenInclude(c => c.User)
+                .Include(r => r.Likes)
+                    .ThenInclude(l => l.User)
+                .AsSplitQuery();
 
-            if (!string.IsNullOrWhiteSpace(query.UserId))
+            
+
+            if (!string.IsNullOrWhiteSpace(query.Title))
             {
-                recipes = recipes.Where(
-                    r => r.UserId == query.UserId);
+                var title = query.Title.Trim();
+                recipes = recipes.Where(r => r.Name.Contains(title));
             }
+
+            if (query.MaxCookingTime is int maxCookingTime)
+            {
+                recipes = recipes.Where(r => r.CookingTimeInMinutes <= maxCookingTime);
+            }
+
+            if (query.Liked)
+            {
+                recipes = recipes.Where(recipe =>
+                    recipe.Likes.Any(like => like.UserId == query.UserId));
+            }
+            else if (!string.IsNullOrWhiteSpace(query.UserId))
+            {
+                recipes = recipes.Where(recipe => recipe.UserId == query.UserId);
+            }
+
+            recipes = query.SortDirection?.ToLowerInvariant() switch
+            {
+                "asc" => recipes.OrderBy(r => r.CookingTimeInMinutes),
+                "desc" => recipes.OrderByDescending(r => r.CookingTimeInMinutes),
+                _ => recipes
+            };
 
             return await recipes.ToListAsync();
         }

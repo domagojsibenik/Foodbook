@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Foodbook.DTO;
 using Foodbook.Helpers;
 using Foodbook.Interfaces;
@@ -140,6 +141,44 @@ namespace Foodbook.Controllers
             await _repository.DeleteAsync(recipe.Id);
 
             return NoContent();
+        }
+
+        [Authorize]
+        [HttpGet("~/api/me/recipes")]
+        public async Task<IActionResult> GetMyRecipes([FromQuery] QueryObject query)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                return Unauthorized();
+            }
+
+            query.UserId = userId;
+            query.Liked = false;
+
+            var recipes = await _repository.GetAllAsync(query);
+
+            return Ok(recipes.Select(r => r.ToResponseDTO()));
+        }
+
+        [Authorize]
+        [HttpGet("~/api/me/liked-recipes")]
+        public async Task<IActionResult> GetMyLikedRecipes([FromQuery] QueryObject query)
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                return Unauthorized();
+            }
+
+            query.UserId = userId;
+            query.Liked = true;
+
+            var recipes = await _repository.GetAllAsync(query);
+
+            return Ok(recipes.Select(r => r.ToResponseDTO()));
         }
     }
 }
